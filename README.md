@@ -1,15 +1,6 @@
-# Axios JWT Refresh [![npm version](https://img.shields.io/npm/v/axios-jwt-refresh.svg)](https://www.npmjs.com/package/axios-jwt-refresh)
+# Axios JWT Refresh Middleware
 
-Automatic JWT refresh middleware for Axios with TypeScript support and flexible storage options.
-
-## Features
-
-- 🔄 Automatic token refresh on 401 errors
-- 🍪 Cookie/localStorage support via js-cookie
-- ⏳ Request queuing during refresh
-- 🛠️ Fully configurable with TypeScript types
-- 🔄 Retry mechanism with custom delays
-- 🚀 Zero dependencies (except peer deps)
+Minimalist library for automatic JWT token refresh in Axios
 
 ## Installation
 
@@ -19,114 +10,101 @@ npm install axios-jwt-refresh axios js-cookie
 yarn add axios-jwt-refresh axios js-cookie
 ```
 
-## Basic Usage
+## Quick Start
 
 ```javascript
 import axios from 'axios';
 import { createTokenRefreshMiddleware } from 'axios-jwt-refresh';
 
-// Create axios instance
+// 1. Create axios instance
 const axiosInstance = axios.create();
 
-// Add request interceptor for token refresh
+// 2. Define token refresh function
+const requestNewTokens = async () => {
+  const response = await axios.post('/auth/refresh');
+  return {
+    accessToken: response.data.access_token,
+    refreshToken: response.data.refresh_token
+  };
+};
+
+// 3. Create and attach middleware
 axiosInstance.interceptors.request.use(
   createTokenRefreshMiddleware({
-    refreshTokenUrl: '/api/auth/refresh',
-    accessTokenCookieOptions: { secure: true }
+    requestTokens: requestNewTokens,
+    onRefreshAndAccessExpire: () => {
+      // Handle expired session
+      window.location.href = '/login';
+    },
+    accessTokenKey: 'accessToken',
+    refreshTokenKey: 'refreshToken',
+    cookiesOptions: { secure: true, sameSite: 'strict' }
   })
 );
 
-// Example API call
+// 4. Use as normal axios instance
 axiosInstance.get('/api/protected-data')
-  .then(response => console.log(response.data))
-  .catch(error => console.error('API Error:', error));
+  .then(response => console.log(response.data));
 ```
 
-## Advanced Configuration
+## Configuration Options
 
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `requestTokens` | `() => Promise<{accessToken: string, refreshToken: string}>` | Yes | Function to request new tokens |
+| `onRefreshAndAccessExpire` | `() => void` | Yes | Callback when both tokens are missing |
+| `accessTokenKey` | `string` | Yes | Cookie key for access token |
+| `refreshTokenKey` | `string` | Yes | Cookie key for refresh token |
+| `timeoutRequest` | `number` | No (30000) | Refresh timeout in ms |
+| `cookiesOptions` | `CookieAttributes` | No | Cookie storage options |
+
+## How It Works
+
+1. Checks for access token on each request
+2. If access token is missing but refresh token exists:
+   - Queues incoming requests
+   - Executes token refresh request
+   - On success:
+     - Stores new tokens
+     - Processes queued requests with new token
+3. If both tokens are missing:
+   - Calls `onRefreshAndAccessExpire` callback
+   - Continues original request (will likely get 401)
+
+## Error Handling
+
+### Refresh Token Failure
 ```javascript
-axiosInstance.interceptors.request.use(
-  createTokenRefreshMiddleware({
-    refreshTokenUrl: '/api/auth/refresh',
-    accessTokenKey: 'app_access',
-    refreshTokenKey: 'app_refresh',
-    accessTokenCookieOptions: { 
-      secure: true,
-      sameSite: 'strict',
-      expires: 1 // 1 day
-    },
-    getAccessToken: (response) => response.data.token,
-    onRefreshSuccess: (response) => {
-      console.log('Token refreshed:', response.data.token)
-    },
-    onRefreshError: (error) => {
-      console.error('Refresh failed:', error)
-      // Redirect to login
-    },
-    maxRefreshAttempts: 2
-  })
-)
+const requestNewTokens = async () => {
+  try {
+    const response = await axios.post('/auth/refresh');
+    return response.data;
+  } catch (error) {
+    // Custom error handling
+    throw error;
+  }
+};
 ```
 
-## API Documentation
-
-### `createTokenRefreshMiddleware(options)`
-
-Creates an Axios request interceptor for automatic token refresh.
-
-#### Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `accessTokenKey` | string | `'accessToken'` | Cookie key for access token |
-| `refreshTokenKey` | string | `'refreshToken'` | Cookie key for refresh token |
-| `refreshTokenUrl` | string | **Required** | URL for token refresh endpoint |
-| `accessTokenCookieOptions` | CookieAttributes | `{ path: '/' }` | Cookie options for access token |
-| `refreshTokenCookieOptions` | CookieAttributes | `{ path: '/' }` | Cookie options for refresh token |
-| `timeoutRequest` | number | `30000` | Timeout for queued requests (ms) |
-| `getAccessToken` | function | `(res) => res.data.accessToken` | Extracts access token from response |
-| `getRefreshToken` | function | - | Extracts refresh token from response |
-| `onRefreshSuccess` | function | - | Callback on successful refresh |
-| `onRefreshError` | function | - | Callback on refresh error |
-| `onMissingTokens` | function | - | Callback when both tokens are missing |
-| `shouldInterceptRequest` | function | `() => true` | Custom request interception logic |
-| `transformRefreshRequest` | function | `(config) => config` | Transforms refresh request |
-| `transformRetryRequest` | function | Sets Authorization header | Transforms request before retry |
-| `maxRefreshAttempts` | number | `1` | Max refresh retry attempts |
-| `refreshRetryDelay` | number | `1000` | Delay between retries (ms) |
-| `cookieHandler` | CookieTokenHandler | js-cookie | Custom cookie handler |
-
-## Recipes
-
-### Custom Storage
-
+### Request Interceptor
 ```javascript
-const customStorage = {
-  get: (key) => localStorage.getItem(key),
-  set: (key, value) => localStorage.setItem(key, value),
-  remove: (key) => localStorage.removeItem(key)
-}
-
-createTokenRefreshMiddleware({
-  refreshTokenUrl: '/refresh',
-  cookieHandler: customStorage
-})
+axiosInstance.interceptors.response.use(null, (error) => {
+  if (error.response?.status === 401) {
+    // Handle unauthorized errors
+  }
+  return Promise.reject(error);
+});
 ```
 
-### Custom Token Extraction
+## Limitations
 
-```javascript
-createTokenRefreshMiddleware({
-  refreshTokenUrl: '/refresh',
-  getAccessToken: (response) => response.data.data.token,
-  getRefreshToken: (response) => response.data.data.refreshToken
-})
-```
+- Browser environment only (uses js-cookie)
+- No built-in retry mechanism for failed refresh attempts
+- Minimal configuration approach
 
-## Contributing
+## Best Practices
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
-## License
-
-[MIT](https://choosealicense.com/licenses/mit/)
+1. Always implement `onRefreshAndAccessExpire` to handle expired sessions
+2. Use secure cookie options in production
+3. Add error handling to your `requestTokens` function
+4. Consider adding request retry logic for failed refresh attempts
