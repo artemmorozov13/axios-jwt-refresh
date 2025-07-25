@@ -17,21 +17,29 @@ Automatic JWT refresh middleware for Axios with TypeScript support and flexible 
 npm install axios-jwt-refresh axios js-cookie
 # or
 yarn add axios-jwt-refresh axios js-cookie
+```
 
 ## Basic Usage
 
 ```javascript
-import axios from 'axios'
-import { createTokenRefreshMiddleware } from 'axios-token-refresh-middleware'
+import axios from 'axios';
+import { createTokenRefreshMiddleware } from 'axios-jwt-refresh';
 
-const axiosInstance = axios.create()
+// Create axios instance
+const axiosInstance = axios.create();
 
+// Add request interceptor for token refresh
 axiosInstance.interceptors.request.use(
   createTokenRefreshMiddleware({
     refreshTokenUrl: '/api/auth/refresh',
     accessTokenCookieOptions: { secure: true }
   })
-)
+);
+
+// Example API call
+axiosInstance.get('/api/protected-data')
+  .then(response => console.log(response.data))
+  .catch(error => console.error('API Error:', error));
 ```
 
 ## Advanced Configuration
