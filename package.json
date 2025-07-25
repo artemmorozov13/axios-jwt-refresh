@@ -24,12 +24,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/artemmorozov13/axios-jwt-refresh"
+    "url": "https://github.com/artemmorozov13/axios-jwt-refresh-token"
   },
   "bugs": {
-    "url": "https://github.com/artemmorozov13/axios-jwt-refresh/issues"
+    "url": "https://github.com/artemmorozov13/axios-jwt-refresh-token/issues"
   },
-  "homepage": "https://github.com/artemmorozov13/axios-jwt-refresh#readme",
+  "homepage": "https://github.com/artemmorozov13/axios-jwt-refresh-token#readme",
   "peerDependencies": {
     "axios": "^1.2.0",
     "js-cookie": "^3.0.1"

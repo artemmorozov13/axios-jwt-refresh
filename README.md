@@ -5,16 +5,16 @@ Minimalist library for automatic JWT token refresh in Axios
 ## Installation
 
 ```bash
-npm install axios-jwt-refresh axios js-cookie
+npm install axios-jwt-refresh-token axios js-cookie
 # or
-yarn add axios-jwt-refresh axios js-cookie
+yarn add axios-jwt-refresh-token axios js-cookie
 ```
 
 ## Quick Start
 
 ```javascript
 import axios from 'axios';
-import { createTokenRefreshMiddleware } from 'axios-jwt-refresh';
+import { createTokenRefreshMiddleware } from 'axios-jwt-refresh-token';
 
 // 1. Create axios instance
 const axiosInstance = axios.create();
